@@ -1,0 +1,174 @@
+// ---------------------------------------------------------------------------
+// Panny — Prisma schema (PostgreSQL + PostGIS)
+// ---------------------------------------------------------------------------
+// Geospatial strategy:
+//   Prisma has no first-class geometry/geography type, so we store BOTH:
+//     1. Plain `latitude` / `longitude` Float columns — trivially readable by
+//        Prisma Client and the mobile app.
+//     2. An `Unsupported("geography(Point, 4326)")` column (`location`) that
+//        PostGIS indexes with GiST for fast "deals within N miles" queries.
+//   `prisma/sql/setup_postgis.sql` installs a DB trigger that keeps
+//   `location` in sync with lat/lng on INSERT/UPDATE, so application code
+//   never has to write the spatial column directly. Radius queries are done
+//   with $queryRaw (ST_DWithin / ST_Distance) — see src/routes/dealRouter.ts.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider        = "prisma-client-js"
+  // Required for `extensions = [postgis]` in the datasource block.
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Retailers known to run penny/markdown clearance cycles.
+enum Retailer {
+  HOME_DEPOT
+  LOWES
+  WALMART
+  TARGET
+  DOLLAR_GENERAL
+  OTHER
+}
+
+/// Lifecycle of a reported deal.
+///  - PENNY:   confirmed ringing up at $0.01
+///  - ACTIVE:  marked down (e.g. 50–90% off) but not yet a penny
+///  - EXPIRED: no longer ringing up at the reported price
+enum DealStatus {
+  PENNY
+  ACTIVE
+  EXPIRED
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  username     String   @unique
+  /// bcrypt/argon2 hash — never store plaintext.
+  passwordHash String   @map("password_hash")
+
+  /// Denormalized counter bumped on every accepted deal report; cheap to
+  /// display on profiles/leaderboards without a COUNT(*) over deals.
+  contributionsCount Int @default(0) @map("contributions_count")
+
+  reportedDeals Deal[] @relation("ReportedDeals")
+  votes         DealVote[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Store {
+  id       String   @id @default(cuid())
+  name     String            // e.g. "Home Depot #4512 - Austin North"
+  retailer Retailer
+  address  String
+  city     String
+  state    String
+  zipCode  String   @map("zip_code")
+
+  /// Human/app-friendly coordinates (WGS 84).
+  latitude  Float
+  longitude Float
+
+  /// PostGIS geography point, kept in sync by a DB trigger (see
+  /// prisma/sql/setup_postgis.sql). `geography` (not `geometry`) so that
+  /// ST_DWithin/ST_Distance operate in meters on a spheroid — accurate
+  /// real-world distances without manual haversine math.
+  location Unsupported("geography(Point, 4326)")?
+
+  deals Deal[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // GiST index is what makes radius queries O(log n) instead of a full scan.
+  @@index([location], name: "store_location_idx", type: Gist)
+  @@index([retailer])
+  @@map("stores")
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  /// UPC-A / EAN-13 barcode digits. Unique: one product row per barcode.
+  upc         String  @unique
+  /// Retailer-internal SKU (differs from UPC; useful for HD/Lowes lookups).
+  sku         String?
+  title       String
+  imageUrl    String? @map("image_url")
+  description String?
+
+  deals Deal[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("products")
+}
+
+model Deal {
+  id String @id @default(cuid())
+
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  storeId String @map("store_id")
+  store   Store  @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  /// Decimal(10,2) — never use Float for money.
+  price  Decimal    @db.Decimal(10, 2)
+  status DealStatus @default(ACTIVE)
+
+  /// Denormalized vote tallies for cheap feed rendering; DealVote rows are
+  /// the source of truth and enforce one vote per user per deal.
+  upvotes   Int @default(0)
+  downvotes Int @default(0)
+
+  reportedById String? @map("reported_by_id")
+  reportedBy   User?   @relation("ReportedDeals", fields: [reportedById], references: [id], onDelete: SetNull)
+
+  votes DealVote[]
+
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  /// Last time someone confirmed the price at the register.
+  lastVerifiedAt DateTime? @map("last_verified_at")
+
+  // One deal row per product per store — reports update it, not duplicate it.
+  @@unique([productId, storeId])
+  // Feed query filters by status then joins stores; index keeps it fast.
+  @@index([status, updatedAt])
+  @@map("deals")
+}
+
+/// One row per (user, deal) vote — prevents ballot stuffing at the DB level.
+model DealVote {
+  id     String @id @default(cuid())
+  dealId String @map("deal_id")
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// +1 (still pennying) or -1 (didn't ring up).
+  value Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([dealId, userId])
+  @@map("deal_votes")
+}

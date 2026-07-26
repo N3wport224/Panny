@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Panny",
+    "slug": "panny",
+    "version": "0.1.0",
+    "scheme": "panny",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Panny uses the camera to scan item barcodes and check for penny deals."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Panny uses your location to show penny deals at stores near you."
+        }
+      ]
+    ],
+    "ios": { "supportsTablet": false },
+    "android": { "package": "com.panny.app" }
+  }
+}

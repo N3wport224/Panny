@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Env & secrets — never commit real connection strings
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+.expo/
+web-build/
+
+# Prisma generated client
+backend/src/generated/
+
+# OS / editor noise
+.DS_Store
+*.log
