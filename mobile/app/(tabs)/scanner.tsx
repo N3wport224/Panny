@@ -16,8 +16,8 @@ import { reportDeal, scanBarcode, type ScanResult } from "@/lib/api";
 
 // MVP: hardcoded to the seeded Home Depot store. Real flow: geolocate the
 // user and let them confirm which store they're standing in.
-const CURRENT_STORE_ID = "seed-hd-austin-n";
-const CURRENT_STORE_NAME = "Home Depot #6839 - Austin North";
+const CURRENT_STORE_ID = "seed-hd-lone-tree";
+const CURRENT_STORE_NAME = "Home Depot - Lone Tree";
 
 type ScanState =
   | { phase: "scanning" }
