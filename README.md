@@ -63,13 +63,41 @@ npm run dev                   # http://localhost:4000
 > models it as an `Unsupported` field; all radius queries go through
 > `$queryRaw` (see `dealRouter.ts`).
 
-### 3. Mobile
+### 3. Mobile — run it on your iPhone
+
+The app targets **Expo SDK 54**, which is what the current Expo Go app on the
+App Store supports (iPhone 17 / iOS 26 included). No Mac or Xcode needed.
+
+1. Install **Expo Go** from the App Store on your iPhone.
+2. Start the backend (step 2 above) on your computer.
+3. Find your computer's LAN IP (`ipconfig getifaddr en0` on macOS,
+   `ipconfig` on Windows) — your phone talks to the API over Wi-Fi, so
+   `localhost` won't work from the device.
+4. Start the dev server, pointing the app at that IP:
+
+   ```bash
+   cd mobile
+   npm install
+   EXPO_PUBLIC_API_URL=http://192.168.x.x:4000 npx expo start
+   ```
+
+5. Open the **Camera** app on your iPhone and scan the QR code in the
+   terminal — it opens straight into Expo Go. Phone and computer must be on
+   the same Wi-Fi network.
+
+> If your network blocks device-to-laptop traffic (common on office/public
+> Wi-Fi), use a tunnel instead: `npx expo start --tunnel`. The QR code then
+> works from any network, but the API URL must also be reachable from the
+> internet (e.g. via `ngrok http 4000`).
+
+### Run the tests
+
+Backend integration tests run against a real PostGIS database (they truncate
+tables — point them at a throwaway DB):
 
 ```bash
-cd mobile
-npm install
-# Point the app at your machine's LAN IP so a physical device can reach the API:
-EXPO_PUBLIC_API_URL=http://192.168.x.x:4000 npx expo start
+cd backend
+npm test        # 17 tests: scan/report/vote flows + geospatial radius/sort
 ```
 
 ## API surface

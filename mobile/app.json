@@ -6,6 +6,7 @@
     "scheme": "panny",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
     "plugins": [
       "expo-router",
       [
