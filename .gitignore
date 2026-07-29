@@ -11,6 +11,11 @@ dist/
 build/
 .expo/
 web-build/
+.next/
+*.tsbuildinfo
+
+# Local dev certificates (next dev --experimental-https)
+certificates/
 
 # Prisma generated client
 backend/src/generated/

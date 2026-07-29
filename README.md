@@ -6,11 +6,12 @@ you find so other hunters can verify them.
 
 ## Stack
 
-| Layer    | Tech                                                    |
-| -------- | ------------------------------------------------------- |
-| Mobile   | React Native (Expo SDK 51+, Expo Router, expo-camera)   |
-| API      | Node.js, Express 4, TypeScript, Zod validation          |
-| Database | PostgreSQL 15+ with **PostGIS**, Prisma ORM             |
+| Layer    | Tech                                                       |
+| -------- | ---------------------------------------------------------- |
+| Web PWA  | Next.js 15 (App Router), TypeScript, Tailwind 4, ZXing     |
+| Mobile   | React Native (Expo SDK 54, Expo Router, expo-camera)       |
+| API      | Node.js, Express 4, TypeScript, Zod validation             |
+| Database | PostgreSQL 15+ with **PostGIS**, Prisma ORM                |
 
 ## Repo layout
 
@@ -63,7 +64,27 @@ npm run dev                   # http://localhost:4000
 > models it as an `Unsupported` field; all radius queries go through
 > `$queryRaw` (see `dealRouter.ts`).
 
-### 3. Mobile — run it on your iPhone
+### 3. Web PWA — run it on your iPhone (no app install)
+
+```bash
+cd web
+npm install
+npm run dev:https      # https is REQUIRED for camera + geolocation on iOS
+```
+
+Then on your iPhone (same Wi-Fi): open `https://<your-LAN-IP>:3000` in
+Safari, accept the self-signed-certificate warning, tap **Share → Add to
+Home Screen**. The app launches standalone (no Safari chrome) with the
+Penny Tracker icon.
+
+The web app calls the API at same-origin `/api/*`; `next.config.ts`
+rewrites that to the Express server (`API_PROXY_URL`, default
+`http://localhost:4000`). That avoids both CORS preflights and iOS
+mixed-content blocking — no extra config needed. For direct cross-origin
+API calls instead, set `NEXT_PUBLIC_API_URL` and add your web origin to the
+backend's `CORS_ORIGINS`.
+
+### 4. Native mobile app (Expo) — run it on your iPhone
 
 The app targets **Expo SDK 54**, which is what the current Expo Go app on the
 App Store supports (iPhone 17 / iOS 26 included). No Mac or Xcode needed.

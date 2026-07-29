@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+/* App-wide theme: mirror the native app's dark palette. */
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  /* Standalone-mode pages rubber-band scroll like a web page by default;
+     fixing the background color hides the white overscroll flash. */
+  background-color: #020617;
+  overscroll-behavior-y: none;
+  /* Disable iOS long-press callouts / text selection on UI chrome so taps
+     feel like a native app, not a document. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Bottom padding = nav bar height + iPhone home-indicator safe area.
+   Defined as a utility so layout.tsx can compose it with Tailwind. */
+@utility pb-nav {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+}
+
+/* Safe-area padding for the fixed bottom nav itself. */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Top padding that clears the translucent iOS status bar in standalone. */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
